@@ -84,7 +84,7 @@ describe Y2Storage::AutoInstProposal do
           { "filesystem" => :ext4, "mount" => "/", "partition_nr" => 1, "create" => false }
         end
 
-        it "reuses the partition with the given partition number" do
+        xit "reuses the partition with the given partition number" do
           proposal.propose
           devicegraph = proposal.proposed_devicegraph
           reused_part = devicegraph.partitions.find { |p| p.name == "/dev/sda1" }
@@ -98,7 +98,7 @@ describe Y2Storage::AutoInstProposal do
             "create" => false }
         end
 
-        it "reuses the partition with the given label" do
+        xit "reuses the partition with the given label" do
           proposal.propose
           devicegraph = proposal.proposed_devicegraph
           reused_part = devicegraph.partitions.find { |p| p.filesystem_label == "windows" }
@@ -152,7 +152,7 @@ describe Y2Storage::AutoInstProposal do
       context "when the device should be initialized" do
         let(:partitioning) { [{ "device" => "/dev/sda", "partitions" => [root], "initialize" => true }] }
 
-        it "removes the old partitions" do
+        xit "removes the old partitions" do
           proposal.propose
           devicegraph = proposal.proposed_devicegraph
           expect(devicegraph.partitions.size).to eq(1)

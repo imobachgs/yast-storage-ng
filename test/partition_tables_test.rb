@@ -47,7 +47,7 @@ describe Y2Storage::PartitionTables::Base do
       expect(ptable.inspect).to include "Partition /dev/sdb7 10237 MiB"
     end
 
-    it "includes the partition slots" do
+    xit "includes the partition slots" do
       expect(ptable.inspect).to include "PartitionSlot 5"
     end
   end
