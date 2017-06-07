@@ -26,8 +26,6 @@ require "y2storage/proposal/partition_killer"
 require "y2storage/proposal/lvm_helper"
 require "y2storage/exceptions"
 require "y2storage/skip_list"
-# TODO: no nos dejemos esto atrás
-require "byebug"
 
 module Y2Storage
   # Class to calculate a storage proposal for autoinstallation
