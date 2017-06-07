@@ -25,6 +25,7 @@ require "y2storage/disk_analyzer"
 require "y2storage/proposal/partition_killer"
 require "y2storage/proposal/lvm_helper"
 require "y2storage/exceptions"
+require "y2storage/skip_list"
 # TODO: no nos dejemos esto atrás
 require "byebug"
 
@@ -100,7 +101,7 @@ module Y2Storage
         memo[disk["device"]] = disk
       end
 
-      flexible_disks.reduce(drives) do |disk, memo|
+      drives = flexible_disks.each_with_object(drives) do |disk, memo|
         disk_name = first_usable_disk(disk, devicegraph, drives)
         memo[disk_name] = disk
       end
@@ -145,17 +146,15 @@ module Y2Storage
     end
 
     def first_usable_disk(disk_description, devicegraph, drives)
+      skip_list = SkipList.from_array(disk_description.fetch("skip_list", []))
+
       devicegraph.disks.each do |disk|
         next if drives.keys.include?(disk.name)
-        next if skipped?(disk_description, disk)
+        next if skip_list.matches?(disk)
 
         return disk.name
       end
       nil
-    end
-
-    def skipped?(a, b)
-      false
     end
 
     # Delete unwanted partitions for the given disk
