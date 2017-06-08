@@ -20,21 +20,41 @@
 # find current contact information at www.suse.com.
 
 module Y2Storage
+  # This class reads information from disks to be used as values when
+  # on skip lists. On one hand, the class implements logic to find out
+  # the needed values; on the other hand, it can offer a backward compatibility
+  # layer.
+  #
+  # NOTE: At this point, only a subset of them are implemented. Have a look at
+  # `yast2 ayast_probe` to find out which values are supported in the old
+  # libstorage.
   class SkipListValue
+    # @return [Y2Storage::Disk] Disk
     attr_reader :disk
+    private :disk
 
+    # Constructor
     def initialize(disk)
       @disk = disk
     end
 
+    # Size in kilobytes
+    #
+    # @return [Fixnum] Size
     def size_k
       disk.size.to_i
     end
 
+    # Device full name
+    #
+    # @return [String] Full device name
     def device
       disk.name
     end
 
+    # Device name
+    #
+    # @return [String] Last part of device name (for instance, sdb)
     def name
       disk.name.split("/").last
     end

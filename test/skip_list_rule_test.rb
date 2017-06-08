@@ -40,7 +40,7 @@ describe Y2Storage::SkipListRule do
     allow(Y2Storage::SkipListValue).to receive(:new).and_return(value)
   end
 
-  describe ".from_hash" do
+  describe ".from_profile_rule" do
     let(:hash) do
       { "skip_key" => "size_k", predicate => true, "skip_value" => "1024" }
     end
@@ -48,7 +48,7 @@ describe Y2Storage::SkipListRule do
     let(:predicate) { "skip_if_less_than" }
 
     it "returns a rule for the given value, predicate and reference" do
-      rule = described_class.from_hash(hash)
+      rule = described_class.from_profile_rule(hash)
       expect(rule.predicate).to eq(:less_than)
       expect(rule.raw_reference).to eq("1024")
       expect(rule.key).to eq("size_k")
@@ -58,7 +58,7 @@ describe Y2Storage::SkipListRule do
       let(:predicate) { "skip_if_more_than" }
 
       it "sets predicate to :more_than" do
-        rule = described_class.from_hash(hash)
+        rule = described_class.from_profile_rule(hash)
         expect(rule.predicate).to eq(:more_than)
       end
     end
@@ -67,7 +67,7 @@ describe Y2Storage::SkipListRule do
       let(:predicate) { "skip_if_less_than" }
 
       it "sets predicate to :less_than" do
-        rule = described_class.from_hash(hash)
+        rule = described_class.from_profile_rule(hash)
         expect(rule.predicate).to eq(:less_than)
       end
     end
@@ -78,7 +78,7 @@ describe Y2Storage::SkipListRule do
       end
 
       it "sets predicate to :equal_to" do
-        rule = described_class.from_hash(hash)
+        rule = described_class.from_profile_rule(hash)
         expect(rule.predicate).to eq(:equal_to)
       end
     end

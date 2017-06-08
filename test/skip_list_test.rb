@@ -31,7 +31,7 @@ describe Y2Storage::SkipList do
   let(:rule2) { instance_double(Y2Storage::SkipListRule) }
   let(:disk) { instance_double(Y2Storage::Disk) }
 
-  describe ".from_array" do
+  describe ".from_profile" do
     let(:spec) do
       [
         { "skip_key" => "size_k", "skip_value" => "1024" },
@@ -40,8 +40,9 @@ describe Y2Storage::SkipList do
     end
 
     it "creates a list with rules" do
-      allow(Y2Storage::SkipListRule).to receive(:from_hash).and_return(rule1, rule2)
-      list = Y2Storage::SkipList.from_array(spec)
+      allow(Y2Storage::SkipListRule).to receive(:from_profile_rule)
+        .and_return(rule1, rule2)
+      list = Y2Storage::SkipList.from_profile(spec)
       expect(list.rules).to eq([rule1, rule2])
     end
   end
