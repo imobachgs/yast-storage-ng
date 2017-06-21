@@ -52,8 +52,14 @@ module Y2Storage
 
         drives_map.each_pair do |disk_name, drive_spec|
           disk = Disk.find_by_name(devicegraph, disk_name)
-          result.concat(planned_for_disk(disk, drive_spec))
+          if drive_spec.fetch("type", :CT_DISK).to_sym == :CT_DISK
+            result.concat(planned_for_disk(disk, drive_spec))
+          else
+            result << planned_for_lvm(disk, drive_spec)
+          end
         end
+
+        # assign_pvs!(drives_map, result.select { |d| d.is_a?(Y2Storage::Planned::LvmVg) })
 
         checker = BootRequirementsChecker.new(devicegraph, planned_devices: result)
         result.concat(checker.needed_partitions)
@@ -63,12 +69,39 @@ module Y2Storage
 
     protected
 
+      # def assign_pvs!(disks, devices)
+      #   disks.each_pair do |disk_name, drive_spec|
+      #     partitions = drive_spec.fetch("partitions", []).select { |i| i["lvm_group"] }.compact
+      #     partitions.each do |part|
+      #       vg = devices.find { |v| v.volume_group_name == part["lvm_group"] }
+      #       # vg.pvs << drive_spec["device"]
+      #       vg.pvs = ["/dev/sda1"]
+      #     end
+      #   end
+      # end
+
+      # TODO:
+      # * reusing vgs, lvs
+      def planned_for_lvm(disk, spec)
+        vg = Y2Storage::Planned::LvmVg.new(volume_group_name: File.basename(spec["device"]))
+
+        spec.fetch("partitions", []).each_with_object(vg.lvs) do |lv_spec, memo|
+          lv = Y2Storage::Planned::LvmLv.new(lv_spec["mount"], filesystem_for(lv_spec["filesystem"]))
+          lv.logical_volume_name = lv_spec["lv_name"]
+          lv.min_size = DiskSize.MiB(1)
+          lv.max_size = DiskSize.unlimited
+          memo << lv
+        end
+        vg
+      end
+
       # @return [Devicegraph] Starting devicegraph
       attr_reader :devicegraph
 
       # Returns an array of planned partitions for a given disk
       #
       # @param disk         [Disk] Disk to place the partitions on
+      # FIXME: I should consider passing only the disk name (and not the whole object)
       # @param partitioning [Hash] Partitioning specification from AutoYaST
       # @return [Array<Planned::Partition>] List of planned partitions
       def planned_for_disk(disk, spec)
@@ -77,9 +110,13 @@ module Y2Storage
           # TODO: fix Planned::Partition.initialize
           partition = Y2Storage::Planned::Partition.new(nil, nil)
           partition.disk = disk.name
+          partition.lvm_volume_group_name = partition_spec["lvm_group"]
           # TODO: partition.bootable is not in the AutoYaST profile. Check if
           # there's some logic to set it in the old code.
-          partition.filesystem_type = filesystem_for(partition_spec["filesystem"])
+          if partition_spec["filesystem"]
+            partition.filesystem_type = filesystem_for(partition_spec["filesystem"])
+          end
+
           # TODO: set the correct id based on the filesystem type (move to Partition class?)
           partition.partition_id = 131
           if partition_spec["crypt_fs"]
@@ -116,6 +153,7 @@ module Y2Storage
       # Returns min and max sizes for a partition specification
       #
       # @param description [Hash] Partition specification from AutoYaST
+      # @param disk
       # @return [[DiskSize,DiskSize]] min and max sizes for the given partition
       #
       # @see SIZE_REGEXP

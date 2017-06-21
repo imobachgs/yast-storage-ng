@@ -62,8 +62,17 @@ module Y2Storage
         raise Error, "Could not find a valid partitioning distribution" if dist.nil?
         part_creator = Proposal::PartitionCreator.new(original_graph)
         result = part_creator.create_partitions(dist)
+        devices_map = result.devices_map
 
-        reused.each { |r| r.reuse!(result) }
+        reused.each { |r| r.reuse!(result.devicegraph) }
+
+        vgs = planned_devices.select { |dev| dev.is_a?(Planned::LvmVg) }
+        vgs.each do |vg|
+          lvm_creator = Proposal::LvmCreator.new(result.devicegraph)
+          pvs = devices_map.select { |_k, v| v.lvm_volume_group_name == vg.volume_group_name }.keys
+          result = lvm_creator.create_volumes(vg, pvs)
+        end
+
         result
       end
 

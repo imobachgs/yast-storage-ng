@@ -153,5 +153,32 @@ describe Y2Storage::Proposal::AutoinstDevicesPlanner do
         expect(root.encryption_password).to eq("secret")
       end
     end
+
+    context "using LVM" do
+      let(:partitioning) do
+        [
+          { "device" => "/dev/sda", "partitions" => [lvm_pv] },
+          { "device" => "/dev/system", "partitions" => [root_spec], "type" => :CT_LVM }
+        ]
+      end
+
+      let(:lvm_pv) do
+        { "create" => true, "lvm_group" => "system", "size" => "max", "type" => :CT_LVM }
+      end
+
+      let(:lvm_spec) do
+        { "is_lvm_vg" => true, "partitions" => [root_spec] }
+      end
+
+      let(:root_spec) do
+        { "mount" => "/", "filesystem" => "ext4", "lv_name" => "root", "size" => "20G" }
+      end
+
+      it "returns volume group and logical volumes" do
+        devices = planner.planned_devices(drives_map)
+        require "pp"
+        pp devices
+      end
+    end
   end
 end

@@ -234,6 +234,33 @@ describe Y2Storage::AutoinstProposal do
       end
     end
 
+    describe "LVM" do
+      let(:partitioning) do
+        [
+          { "device" => "/dev/sda", "use" => "all", "partitions" => [lvm_pv] },
+          { "device" => "/dev/system", "partitions" => [root_spec], "type" => :CT_LVM }
+        ]
+      end
+
+      let(:lvm_pv) do
+        { "create" => true, "lvm_group" => "system", "size" => "20GB", "type" => :CT_LVM }
+      end
+
+      let(:lvm_spec) do
+        { "is_lvm_vg" => true, "partitions" => [root_spec] }
+      end
+
+      let(:root_spec) do
+        { "mount" => "/", "filesystem" => "ext4", "lv_name" => "root", "size" => "1G" }
+      end
+
+      it "creates VGs" do
+        proposal.propose
+        devicegraph = proposal.proposed_devicegraph
+        expect(devicegraph.lvm_vgs).to eq([])
+      end
+    end
+
     context "when already called" do
       before do
         proposal.propose

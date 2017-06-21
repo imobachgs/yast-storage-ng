@@ -56,10 +56,11 @@ module Y2Storage
       #     partitions that should be added as PVs to the volume group
       # @return [Devicegraph] New devicegraph containing the planned volume group
       def create_volumes(planned_vg, pv_partitions = [])
+        byebug
         new_graph = original_devicegraph.duplicate
         return new_graph if planned_vg.lvs.empty?
 
-        vg = planned_vg.reuse? ? find_vg(planned_vg, new_graph) : create_volume_group(new_graph)
+        vg = planned_vg.reuse? ? find_vg(planned_vg, new_graph) : create_volume_group(new_graph, planned_vg)
 
         assign_physical_volumes!(vg, pv_partitions, new_graph)
         make_space!(vg, planned_vg.lvs)
@@ -83,10 +84,11 @@ module Y2Storage
       #
       # The volume group will be DEFAULT_VG_NAME.
       #
-      # @param devicegraph [Devicegraph] Starting point
+      # @param devicegraph [Devicegraph]    Starting point
+      # @param planned_vg  [Planned::LvmVg] Planned volume group
       # @return [Devicegraph] New devicegraph containing the new volume group
-      def create_volume_group(devicegraph)
-        name = available_name(DEFAULT_VG_NAME, devicegraph)
+      def create_volume_group(devicegraph, planned_vg)
+        name = available_name(planned_vg.volume_group_name || DEFAULT_VG_NAME, devicegraph)
         LvmVg.create(devicegraph, name)
       end
 
