@@ -46,12 +46,12 @@ module Y2Storage
       # @raise [NoMorePartitionSlotError]
       #
       # @param partitions_by_disk_space [Hash{FreeDiskSpace => Array<Planned::Partition>}]
-      def initialize(partitions_by_disk_space)
+      def initialize(partitions_by_disk_space, keep_sizes: true)
         unassigned, assigned =
           partitions_by_disk_space.partition { |_k, v| v.empty? }.map(&:to_h)
 
         @spaces = assigned.map do |disk_space, partitions|
-          assigned_space(disk_space, partitions)
+          assigned_space(disk_space, partitions, keep_sizes: keep_sizes)
         end
         @spaces.freeze
 
@@ -238,18 +238,18 @@ module Y2Storage
     protected
 
       # Transforms a FreeDiskSpace and a list of planned partitions into a
-      # AssignedSpace object if the combination is valid.
+      # AssignedSpace object
       #
-      # @raise [NoDiskSpaceError] otherwise
+      # It there is not enough space, it sets the min_size and weight values
+      # for every partition trying to distribute the available space in a
+      # proportional way.
       #
       # @return [AssignedSpace]
-      def assigned_space(disk_space, partitions)
-        result = AssignedSpace.new(disk_space, partitions)
-        if !result.valid?
-          log.error "Invalid assigned space #{result}"
-          raise NoDiskSpaceError, "Volumes cannot be allocated into the assigned space"
-        end
-        result
+      def assigned_space(disk_space, partitions, keep_sizes: true)
+        build_assigned_space(disk_space, partitions)
+      rescue NoDiskSpaceError => e
+        raise if keep_sizes
+        build_assigned_space(disk_space, flexible_partitions(partitions))
       end
 
       # Indexes the list of assigned spaces by disk
@@ -403,6 +403,24 @@ module Y2Storage
         overhead = assigned_space.overhead_of_logical
         assigned_space.extra_size >= overhead * num
       end
+
+      def build_assigned_space(disk_space, partitions)
+        result = AssignedSpace.new(disk_space, partitions)
+        return result if result.valid?
+
+        log.error "Invalid assigned space #{result}"
+        raise NoDiskSpaceError, "Volumes cannot be allocated into the assigned space"
+      end
+
+      def flexible_partitions(partitions)
+        partitions.map do |part|
+          new_part = part.clone
+          new_part.weight = part.min_size.to_i
+          new_part.min_size = DiskSize.B(1)
+          new_part
+        end
+      end
+
     end
   end
 end

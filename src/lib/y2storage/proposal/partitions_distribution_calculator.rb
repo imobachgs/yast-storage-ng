@@ -51,14 +51,15 @@ module Y2Storage
       # @param spaces [Array<FreeDiskSpace>]
       #
       # @return [Planned::PartitionsDistribution]
-      def best_distribution(partitions, spaces)
+      def best_distribution(partitions, spaces, keep_sizes: true)
         log.info "Calculating best space distribution for #{partitions.inspect}"
         # First, make sure the whole attempt makes sense
-        return nil if impossible?(partitions, spaces)
+
+        return nil if keep_sizes && impossible?(partitions, spaces)
 
         log.info "Selecting the candidate spaces for each planned partition"
         begin
-          disk_spaces_by_part = candidate_disk_spaces(partitions, spaces)
+          disk_spaces_by_part = candidate_disk_spaces(partitions, spaces, keep_sizes)
         rescue NoDiskSpaceError
           return nil
         end
@@ -67,7 +68,7 @@ module Y2Storage
         dist_hashes = distribution_hashes(disk_spaces_by_part)
         add_unused_spaces(dist_hashes, spaces)
 
-        candidates = distributions_from_hashes(dist_hashes)
+        candidates = distributions_from_hashes(dist_hashes, keep_sizes)
 
         if lvm_helper.missing_space > DiskSize.zero
           log.info "Calculate LVM posibilities for the #{candidates.size} candidate distributions"
@@ -189,9 +190,9 @@ module Y2Storage
       # @param planned_partitions [Array<Planned::Partition>]
       # @param free_spaces [Array<FreeDiskSpace>]
       # @return [Hash{Planned::Partition => Array<FreeDiskSpace>}]
-      def candidate_disk_spaces(planned_partitions, free_spaces)
+      def candidate_disk_spaces(planned_partitions, free_spaces, keep_sizes)
         planned_partitions.each_with_object({}) do |partition, hash|
-          spaces = free_spaces.select { |space| suitable_disk_space?(space, partition) }
+          spaces = free_spaces.select { |s| suitable_disk_space?(s, partition, keep_sizes) }
           if spaces.empty?
             log.error "No suitable free space for #{partition}"
             raise NoDiskSpaceError, "No suitable free space for the planned partition"
@@ -219,9 +220,9 @@ module Y2Storage
         end
       end
 
-      def suitable_disk_space?(space, partition)
+      def suitable_disk_space?(space, partition, keep_sizes)
         return false if partition.disk && partition.disk != space.disk_name
-        return false if space.disk_size < partition.min_size
+        return false if keep_sizes && space.disk_size < partition.min_size
         max_offset = partition.max_start_offset
         return false if max_offset && space.start_offset > max_offset
         true
@@ -277,10 +278,10 @@ module Y2Storage
       #
       # @param dist_hashes [Array<Hash{FreeDiskSpace => Array<Planned::Partition>}>]
       # @return [Array<Planned::PartitionsDistribution>]
-      def distributions_from_hashes(dist_hashes)
+      def distributions_from_hashes(dist_hashes, keep_sizes)
         dist_hashes.each_with_object([]) do |distribution_hash, array|
           begin
-            dist = Planned::PartitionsDistribution.new(distribution_hash)
+            dist = Planned::PartitionsDistribution.new(distribution_hash, keep_sizes: keep_sizes)
           rescue Error
             next
           end

@@ -91,8 +91,9 @@ module Y2Storage
         spaces = disks.map(&:free_spaces).flatten
         # TODO: the calculator should not enforce the usage of LvmHelper
         calculator = Proposal::PartitionsDistributionCalculator.new(Proposal::LvmHelper.new([]))
-
-        calculator.best_distribution(planned_partitions, spaces)
+        dist = calculator.best_distribution(planned_partitions, spaces, keep_sizes: true)
+        dist ||= calculator.best_distribution(planned_partitions, spaces, keep_sizes: false)
+        dist
       end
 
     private

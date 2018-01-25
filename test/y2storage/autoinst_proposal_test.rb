@@ -1003,6 +1003,36 @@ describe Y2Storage::AutoinstProposal do
         end
       end
     end
+
+    context "when there is not enough space" do
+      let(:partitioning) do
+        [{ "device" => "/dev/sda", "use" => "1,3", "partitions" => [root, home] }]
+      end
+
+      let(:root) { ROOT_PART.merge("size" => "15GiB", "create" => true) }
+
+      let(:home) do
+        { "filesystem" => :xfs, "mount" => "/home", "size" => "450GiB", "create" => true }
+      end
+
+      it "reduces partitions proportionally" do
+        proposal.propose
+        devicegraph = proposal.devices
+        root, _swap, home = devicegraph.partitions.sort { |p| p.region.start }
+
+        expect(root).to have_attributes(
+          filesystem_mountpoint: "/",
+          size:                  15.GiB
+        )
+
+        expect(home).to have_attributes(
+          filesystem_mountpoint: "/home",
+          size:                  250.GiB
+        )
+      end
+
+      it "adds an issue for each reduced partition"
+    end
   end
 
   describe "#issues_list" do
